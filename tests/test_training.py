@@ -1,3 +1,7 @@
+"""Contains tests comparing the behaviour of the
+AdaptiveBatchNormalization layer with the regular BatchNormalization
+layer during training.
+"""
 import numpy as np
 import tensorflow as tf
 
@@ -7,6 +11,9 @@ from adabn import AdaptiveBatchNormalization
 
 
 def test_training_output():
+    """Tests that the output of training an AdaptiveBatchNormalization
+    layer on a single batch is equal to that of BatchNormalization.
+    """
     np.random.seed(42)
 
     adabn = AdaptiveBatchNormalization()
@@ -22,6 +29,10 @@ def test_training_output():
          'for a single domain during training')
 
 def test_training_output_two_domains():
+    """Tests that the output of training an AdaptiveBatchNormalization
+    layer on a single batch is equal to that of BatchNormalization with
+    multiple domains.
+    """
     np.random.seed(42)
 
     gamma_initializers = [1, 2]
@@ -46,6 +57,9 @@ def test_training_output_two_domains():
              'domains correctly during inference')
 
 def test_training_updates_moving_variables():
+    """Tests that training an AdaptiveBatchNormalization layer on a
+    batch updates the moving variables.
+    """
     bn = BatchNormalization()
     inputs = np.random.uniform(3, 4, (10, 10))
 
@@ -71,6 +85,9 @@ def test_training_updates_moving_variables():
          'the moving variance correctly')
 
 def test_training_updates_moving_variables_multiple_domains():
+    """Tests that training an AdaptiveBatchNormalization layer on a
+    batch updates the moving variables for multiple domains.
+    """
     adabn = AdaptiveBatchNormalization(domains=2)
     bn1 = BatchNormalization()
     bn2 = BatchNormalization()
@@ -96,11 +113,15 @@ def test_training_updates_moving_variables_multiple_domains():
         assert np.allclose(expected_moving_mean[i], moving_mean[i], 1e-4), \
             ('Training AdaptiveBatchNormalization on a batch does not update '
              'the moving mean correctly with multiple domains')
-        assert np.allclose(expected_moving_variance[i], moving_variance[i], 1e-4), \
+        assert np.allclose(expected_moving_variance[i], moving_variance[i],
+                           1e-4), \
             ('Training AdaptiveBatchNormalization on a batch does not update '
              'the moving variance correctly with multiple domains')
 
 def test_training_converges():
+    """Tests that training an AdaptiveBatchNormalization on multiple
+    batches converges similarly as a standard BatchNormalization layer.
+    """
     adabn = AdaptiveBatchNormalization(domains=2)
     bns = [BatchNormalization(), BatchNormalization()]
 
@@ -124,4 +145,3 @@ def test_training_converges():
         assert np.allclose(expected_predictions[i], predictions[i], 1e-4), \
             ('AdaptiveBatchNormalization does not converge to the same '
              'activations as regular BatchNorm')
-

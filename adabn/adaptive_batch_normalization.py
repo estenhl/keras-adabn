@@ -1,4 +1,5 @@
-import numpy as np
+"""Contains the domain-adaptive BatchNormalization layer."""
+
 import tensorflow as tf
 
 from tensorflow.keras.layers import Layer
@@ -51,7 +52,7 @@ class AdaptiveBatchNormalization(Layer):
         param_shape = [self.domains] + param_shape
 
         self.beta = self.add_weight(
-            name=f'beta',
+            name='beta',
             shape=param_shape,
             dtype=tf.float32,
             initializer=get_initializer(self.beta_initializer,
@@ -59,7 +60,7 @@ class AdaptiveBatchNormalization(Layer):
         )
 
         self.gamma = self.add_weight(
-            name=f'gamma',
+            name='gamma',
             shape=param_shape,
             dtype=tf.float32,
             initializer=get_initializer(self.gamma_initializer,
@@ -67,7 +68,7 @@ class AdaptiveBatchNormalization(Layer):
         )
 
         self.moving_mean = self.add_weight(
-            name=f'moving_mean',
+            name='moving_mean',
             shape=param_shape,
             dtype=tf.float32,
             trainable=False,
@@ -76,7 +77,7 @@ class AdaptiveBatchNormalization(Layer):
         )
 
         self.moving_variance = self.add_weight(
-            name=f'moving_variance',
+            name='moving_variance',
             shape=param_shape,
             dtype=tf.float32,
             trainable=False,
@@ -93,9 +94,11 @@ class AdaptiveBatchNormalization(Layer):
         variance = tf.math.reduce_variance(inputs, axis=0)
 
 
-        self.moving_mean[domain].assign(self.moving_mean[domain] * self.momentum + \
+        self.moving_mean[domain].assign(self.moving_mean[domain] * \
+                                        self.momentum + \
                                         mean * (1 - self.momentum))
-        self.moving_variance[domain].assign(self.moving_variance[domain] * self.momentum + \
+        self.moving_variance[domain].assign(self.moving_variance[domain] * \
+                                            self.momentum + \
                                             variance * (1 - self.momentum))
 
         return self._calculate(inputs, domain, mean=mean, variance=variance)
@@ -124,7 +127,7 @@ class AdaptiveBatchNormalization(Layer):
 
         return normalized
 
-    def call(self, inputs: List[tf.Tensor], *args, training: bool = False,
+    def call(self, inputs: List[tf.Tensor], training: bool = False,
              **kwargs) -> tf.Tensor:
         """Builds the graph operations depending on if the model is in
         training (training=True) or inference (training=False) phase.
@@ -171,7 +174,7 @@ class AdaptiveBatchNormalization(Layer):
 
         # Validates that the given domain is within the allowed bounds
         tf.Assert(domain >= 0,
-                  [f'Batch had illegal domain (< 0)', domain])
+                  ['Batch had illegal domain (< 0)', domain])
         tf.Assert(domain < self.domains,
                   [f'Batch had illegal domain (>= {self.domains})', domain])
 
@@ -179,4 +182,3 @@ class AdaptiveBatchNormalization(Layer):
             return self._train(inputs, domain)
 
         return self._predict(inputs, domain)
-
