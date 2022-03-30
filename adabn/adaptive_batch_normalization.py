@@ -1,5 +1,7 @@
 """Contains the domain-adaptive BatchNormalization layer."""
 
+import logging
+import numpy as np
 import tensorflow as tf
 
 from tensorflow.keras.layers import Layer
@@ -7,6 +9,10 @@ from typing import Any, List, Tuple
 
 from .utils import get_initializer
 
+
+logformat = '%(asctime)s - %(levelname)s - %(name)s: %(message)s'
+logging.basicConfig(format=logformat, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class AdaptiveBatchNormalization(Layer):
     """A Keras Layer mimicking the behaviour of the built-in
@@ -24,6 +30,8 @@ class AdaptiveBatchNormalization(Layer):
                  gamma_initializer: Any = 'ones',
                  moving_mean_initializer: Any = 'zeros',
                  moving_variance_initializer: Any = 'ones',
+                 beta_regularizer: Any = None,
+                 gamma_regularizer: Any = None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -37,10 +45,15 @@ class AdaptiveBatchNormalization(Layer):
         self.gamma_initializer = gamma_initializer
         self.moving_mean_initializer = moving_mean_initializer
         self.moving_variance_initializer = moving_variance_initializer
+        self.beta_regularizer = beta_regularizer
+        self.gamma_regularizer = gamma_regularizer
 
     def build(self, input_shape: Tuple):
         """Builds the layer by instantiating the trainable and moving
         variables"""
+        logger.info(('Building AdaptiveBatchNormalization layer from input '
+                     f'shape {input_shape}'))
+
         # Drop domain-part of the input
         input_shape = input_shape[0]
 
@@ -49,14 +62,15 @@ class AdaptiveBatchNormalization(Layer):
 
         param_shape = [input_shape[i] if axis == i else 1 \
                        for i in range(len(input_shape))]
-        param_shape = [self.domains] + param_shape
+        param_shape = [self.domains, input_shape[-1]]
 
         self.beta = self.add_weight(
             name='beta',
             shape=param_shape,
             dtype=tf.float32,
             initializer=get_initializer(self.beta_initializer,
-                                        shape=param_shape)
+                                        shape=param_shape),
+            regularizer=self.beta_regularizer
         )
 
         self.gamma = self.add_weight(
@@ -64,7 +78,8 @@ class AdaptiveBatchNormalization(Layer):
             shape=param_shape,
             dtype=tf.float32,
             initializer=get_initializer(self.gamma_initializer,
-                                        shape=param_shape)
+                                        shape=param_shape),
+            regularizer=self.gamma_regularizer
         )
 
         self.moving_mean = self.add_weight(
@@ -90,8 +105,9 @@ class AdaptiveBatchNormalization(Layer):
 
             gamma * (batch - mean(batch)) /
             sqrt(variance(batch) + epsilon) + beta"""
-        mean = tf.reduce_mean(inputs, axis=0)
-        variance = tf.math.reduce_variance(inputs, axis=0)
+        axes = np.arange(len(inputs.shape) - 1)
+        mean = tf.reduce_mean(inputs, axis=axes)
+        variance = tf.math.reduce_variance(inputs, axis=axes)
 
 
         self.moving_mean[domain].assign(self.moving_mean[domain] * \

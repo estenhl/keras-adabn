@@ -5,7 +5,9 @@ layer during training.
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras import Model
+from tensorflow.keras.layers import BatchNormalization, Conv3D, Dense, Input, \
+    Reshape
 
 from adabn import AdaptiveBatchNormalization
 
@@ -145,3 +147,18 @@ def test_training_converges():
         assert np.allclose(expected_predictions[i], predictions[i], 1e-4), \
             ('AdaptiveBatchNormalization does not converge to the same '
              'activations as regular BatchNorm')
+
+def test_training_complex_model():
+    inputs = Input((43, 54, 41))
+    domains = Input((), dtype=tf.int32)
+
+    x = Reshape((43, 54, 41, 1))(inputs)
+    x = Conv3D(32, (3, 3, 3), padding='SAME', activation=None)(x)
+    x = AdaptiveBatchNormalization(domains=2)([x, domains])
+    x = Dense(1)(x)
+
+    model = Model([inputs, domains], x)
+
+    model.compile(loss='mse')
+
+    model.train_on_batch([np.ones((4, 43, 54, 41)), np.ones(4)], np.ones(4))
